@@ -129,7 +129,7 @@ int main(void)
 	  }
 
 
-	  HAL_IWDG_Refresh(&hiwdg);		// Refresh IWDG,	Remember, uncheck IWDG_STDBY to Freeze IWDDG counter in standby mode
+	  HAL_IWDG_Refresh(&hiwdg);		// Refresh IWDG
 
     /* USER CODE END WHILE */
 
