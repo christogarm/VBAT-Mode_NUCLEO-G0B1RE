@@ -1,54 +1,78 @@
-# Low-Power Modes in NUCLEO-G0B1RE
-
-Low-power modes allow saving power when the CPU does not need to remain running.
-
-This device provides seven low-power modes:
-
-* **Stop Mode**
-  * SRAM content is retained.
-  * All clocks in the VCORE domain are stopped.
-  * LSI and LSE oscillators can remain running.
-  * RTC and TAMP peripherals can stay active.
-
-* **Standby Mode**
-  * VCORE domain is powered off.
-  * SRAM content can be preserved if configured.
-  * LSI and LSE oscillators can remain running.
-  * RTC can remain active.
-
-* **Shutdown Mode**
-  * Lowest power consumption mode.
-  * VCORE domain is powered off.
-  * Only the LSE oscillator can remain running.
-  * Supply voltage monitoring is disabled.
+# VABT-Mode in NUCLEO-G0B1RE
 
 
-## Power Consumption Summary
+VBAT is the dedicated power supply for the backup domain of the STM32G0B1, which includes:
 
-The following table shows the typical measured current consumption.
+- RTC (Real-Time Clock)
+- TAMP (Tamper detection)
+- LSE (Low-Speed External 32.768 kHz oscillator)
+- Backup registers
 
+The VBAT domain remains powered when VDD is not present, allowing timekeeping and backup data retention.
+
+VBAT is supplied externally through the **VBAT pin**.
+
+## What happens when VDD is removed?
+When VDD is removed:
+* The MCU enters reset.
+* The core and SRAM are powered down.
+* Peripheral configuration is lost
+
+However, if a backup source is connected (VBAT):
+* The RTC is actived.
+* Backup registes remain preserved.
+* TAMP logic remains active.
+* LSE oscillator keeps running.
+
+This ensures that time and backup data are retained even when the main supply is disconnected.
+
+
+## VBAT Backup Option
+The VBAT domain typically uses:
+* A coin cell battery
+* A supercapacitor
+
+## Charging the VBAT-Pin:
+
+The STM32G0B1 includes an internal charging path between **VDD** and **VBAT**, configurable via software.
+
+
+Use `HAL_PWREx_EnableBatteryCharging(uint32_t ResistorSelection)` to enable charging the Battery or `HAL_PWREx_DisableBatteryCharging()` to disable.
+
+**ResistorSelection** parameter allows choosing between two internal resistors:
+* PWR_BATTERY_CHARGING_RESISTOR_5:  5 kΩ
+* PWR_BATTERY_CHARGING_RESISTOR_1_5:  1.5 kΩ
+
+This resistor is internally connected between VDD and VBAT, allowing the VBAT source (battery or supercapacitor) to charge when VDD is present.
+
+## Current Consumption
 <center>
 
-| **Low-Power Mode**     | **Typical Current Consumption \*** |
-| :--------------------- | :----------------------------------|
-| Stop Mode (0 / 1)\*\*  | 105 / 3.45 [µA]                     |
-| Standby Mode           | 0.25 [µA]                           |
-| Shutdown Mode          | 47.5 [nA]                           |
+| **Current Consumption**| **Measured Current<br>Consumption** |
+| :--------------------- | :--------------------------------|
+| 247.5 [nA]             | 400 [nA]                         |
 
 </center>
+<br>
 
-> \* All low-power modes are measured under their lowest current consumption conditions .<br>
-> \*\* Stop Mode values correspond to STOP 0 / STOP 1 respectively.
-> This data is interpolated between VDD = 3.6 V and VDD = 3.0 V to obtain values at VDD = 3.3 V.
+> This data is interpolated between VDD = 3.6 V and VDD = 3.0 V to obtain values at VDD = 3.3 V and RTC is enabled. <br>
+> You can consult the theory current consumption in [STM32G0B1 Datasheet](https://www.st.com/resource/en/datasheet/stm32g0b1cc.pdf) in the section **5.3.5 Supply current characteristics** to review your particular case.
 
+## How to test VBAT mode?
 
-You can consult the theory current consumption in [STM32G0B1 Datasheet](https://www.st.com/resource/en/datasheet/stm32g0b1cc.pdf) in the section **5.3.5 Supply current characteristics** to review your particular case.
+1. Power off the board.
 
-## How to test these modes?
+2. Remove SB26.
 
-Disconnect **JP3** and measure the current consumption to verify the low-power modes.
+3. Connect 3.3 V directly to the VBAT pin, or connect a supercapacitor to VBAT.
 
-![Screenshot of Nucleo-G0B1RE from https://www.st.com/en/evaluation-tools/nucleo-g0b1re.html#.](img/Nucleo-G0B1RE-JP3.png)
+4. Run the program on the NUCLEO-G0B1RE and verify the RTC date and time using a serial terminal.
+
+5. Disconnect JP3 to remove the VDD supply. The VBAT source will now power the backup domain.
+
+6. Reconnect JP3 and verify that the date and time were preserved.
+
+> You can consult [Nucleo-G0B1RE schematic](https://www.st.com/resource/en/schematic_pack/mb1360-g0b1re-c02_schematic.pdf).
 
 ### Serial Configuration Parameters
 
@@ -68,3 +92,5 @@ If you want to see the Date and Time of the RTC, configure the serial terminal w
 
 - STMicroelectronics. (2024). *STM32G0B1xB/xC/xE Arm® Cortex®-M0+ 32-bit MCU datasheet* (DS13560 Rev. 5).  
   https://www.st.com/resource/en/datasheet/stm32g0b1cc.pdf
+
+- STMicroelectronics. (2020). MB1360-G0B1RE-C02 board schematic (Schematic Pack) [PDF]. STMicroelectronics. https://www.st.com/resource/en/schematic_pack/mb1360-g0b1re-c02_schematic.pdf
